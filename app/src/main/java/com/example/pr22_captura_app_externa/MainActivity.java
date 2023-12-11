@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -19,10 +20,9 @@ public class MainActivity extends AppCompatActivity {
 
     public static final int RC_PHOTO_PICKER = 1;
     ActivityResultLauncher<Intent> someActivityResultLauncher;
-
     ImageView vistaImatge;
     Button botoObrirGaleria;
-
+    Button botoObrirCamara;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,18 +30,34 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         vistaImatge = findViewById(R.id.imageView);
         botoObrirGaleria = findViewById(R.id.buttonGallery);
+        botoObrirCamara = findViewById(R.id.buttonCamara);
 
         someActivityResultLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 new ActivityResultCallback<ActivityResult>() {
                     @Override
                     public void onActivityResult(ActivityResult result) {
-                        if(result.getResultCode() == Activity.RESULT_OK){
-                            //There are no request codes
+                        if (result.getResultCode() == Activity.RESULT_OK) {
                             Intent data = result.getData();
-                            Uri URI = data.getData();
-                            vistaImatge = findViewById(R.id.imageView);
-                            vistaImatge.setImageURI(URI);
+                            if (data != null) {
+                                Uri uri = data.getData();
+                                if (uri != null) {
+                                    try {
+                                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                                        vistaImatge.setImageBitmap(bitmap);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    Bundle extras = data.getExtras();
+                                    if (extras != null) {
+                                        Bitmap bitmap = (Bitmap) extras.get("data");
+                                        if (bitmap != null) {
+                                            vistaImatge.setImageBitmap(bitmap);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 });
@@ -49,28 +65,27 @@ public class MainActivity extends AppCompatActivity {
         botoObrirGaleria.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                openGallery(null);
+                openGallery();
+            }
+        });
+
+        botoObrirCamara.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                takePictureIntent();
             }
         });
     }
 
-    public void openGallery(View view){
-        //Create intent
+    public void openGallery() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("image/*");
         intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-        //Launch Activity to get the result
         someActivityResultLauncher.launch(intent);
     }
 
-
-    @Override
-    protected void onActivityResult(int codiRequerit, int codiResultant, Intent dades) {
-        super.onActivityResult(codiRequerit, codiResultant, dades);
-        if (codiRequerit == RC_PHOTO_PICKER && codiResultant == RESULT_OK) {
-            Bundle extras = dades.getExtras();
-            Bitmap imatgeBitmap = (Bitmap) extras.get("data");
-            vistaImatge.setImageBitmap(imatgeBitmap);
-        }
+    private void takePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        someActivityResultLauncher.launch(takePictureIntent);
     }
 }
